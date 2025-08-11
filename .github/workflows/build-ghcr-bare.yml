@@ -1,0 +1,29 @@
+name: Build & Push Docker (bare)
+on:
+  workflow_dispatch: {}
+  push: { branches: [ "main" ] }
+permissions:
+  contents: read
+  packages: write
+jobs:
+  docker:
+    runs-on: archdev
+    steps:
+      - name: Clone source via git (no actions/checkout)
+        run: |
+          set -euo pipefail
+          rm -rf repo && mkdir repo
+          git -C repo init
+          git -C repo remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+          git -C repo fetch origin "$GITHUB_REF_NAME" --depth=1
+          git -C repo checkout FETCH_HEAD
+      - name: Login GHCR
+        run: |
+          echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+      - name: Build & Push
+        run: |
+          set -euo pipefail
+          cd repo
+          IMAGE="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]'):latest"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
