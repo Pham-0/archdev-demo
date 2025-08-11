@@ -9,21 +9,41 @@ jobs:
   docker:
     runs-on: archdev
     steps:
+      - name: Debug env & docker
+        run: |
+          set -euxo pipefail
+          echo "Actor=$GITHUB_ACTOR"
+          echo "Repo=$GITHUB_REPOSITORY"
+          echo "Ref=$GITHUB_REF  RefName=$GITHUB_REF_NAME  SHA=$GITHUB_SHA"
+          docker --version
+          docker info || true
+
       - name: Clone source via git (no actions/checkout)
         run: |
           set -euo pipefail
           rm -rf repo && mkdir repo
           git -C repo init
           git -C repo remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
-          git -C repo fetch origin "$GITHUB_REF_NAME" --depth=1
+          # Ưu tiên fetch theo SHA cho chắc (dispatch đôi khi REF_NAME rỗng)
+          if [ -n "${GITHUB_SHA:-}" ]; then
+            git -C repo fetch origin "$GITHUB_SHA" --depth=1
+          else
+            git -C repo fetch origin "${GITHUB_REF_NAME:-main}" --depth=1
+          fi
           git -C repo checkout FETCH_HEAD
-      - name: Login GHCR
+          git -C repo log --oneline -n 1
+
+      - name: Login GHCR (via GITHUB_TOKEN)
         run: |
+          set -euo pipefail
           echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+
       - name: Build & Push
         run: |
           set -euo pipefail
           cd repo
-          IMAGE="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]'):latest"
-          docker build -t "$IMAGE" .
-          docker push "$IMAGE"
+          IMAGE="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          docker build -t "$IMAGE:latest" .
+          docker tag "$IMAGE:latest" "$IMAGE:${GITHUB_SHA}"
+          docker push "$IMAGE:${GITHUB_SHA}"
+          docker push "$IMAGE:latest"
