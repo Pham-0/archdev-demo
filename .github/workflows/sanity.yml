@@ -1,0 +1,7 @@
+name: Sanity
+on: { workflow_dispatch: {} }
+jobs:
+  ping:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - run: echo "✅ $(hostname) $(date)"
