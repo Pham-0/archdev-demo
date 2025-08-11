@@ -1,7 +1,12 @@
 name: Sanity
-on: { workflow_dispatch: {} }
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ "main" ]
 jobs:
   ping:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: archdev
     steps:
-      - run: echo "✅ $(hostname) $(date)"
+      - run: |
+          echo "✅ Host=$(hostname)"
+          echo "⏰ Time=$(date)"
