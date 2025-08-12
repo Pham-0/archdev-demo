@@ -5,19 +5,26 @@ on:
 permissions:
   contents: read
   packages: write
-env:
-  IMAGE_NAME: ghcr.io/${{ toLower(github.repository) }}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   docker:
     runs-on: archdev
     steps:
       - uses: actions/checkout@v4
+
+      - name: Compute image name (lowercase)
+        run: |
+          echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
       - name: Login GHCR
         run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
       - uses: docker/setup-buildx-action@v3
+
       - uses: docker/build-push-action@v6
         with:
           context: .
