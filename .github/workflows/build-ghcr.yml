@@ -1,13 +1,15 @@
 name: Build & Push Docker (GHCR)
 on:
   workflow_dispatch: {}
-  push:
-    branches: [ "main" ]
+  push: { branches: ["main"] }
 permissions:
   contents: read
   packages: write
 env:
   IMAGE_NAME: ghcr.io/${{ toLower(github.repository) }}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   docker:
     runs-on: archdev
